@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: vacations-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: vacations_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: vacations-backend
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: rootpassword
+      DB_NAME: vacations_db
+      JWT_SECRET: your-docker-jwt-secret-change-in-production
+      PORT: 3001
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./backend/src/uploads:/app/src/uploads
+
+  frontend:
+    build: ./frontend
+    container_name: vacations-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:3001/api
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
